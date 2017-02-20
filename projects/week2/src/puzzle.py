@@ -1,4 +1,5 @@
 from collections import deque
+import copy
 from math import sqrt
 from pprint import pprint
 
@@ -6,39 +7,39 @@ import numpy as np
 
 
 class Board:
-    def __init__(self, state=None, tiles: str = None):
-        if state:
-            self._board_size = len(state)
-            self._sorted_tiles = np.sort(state.flatten())
-            self._state = state
-        else:
-            starting_tiles = np.array(tiles.split(','))
-            self._board_size = int(sqrt(len(starting_tiles)))
-            self._sorted_tiles = np.sort(starting_tiles)
-            self._state = np.reshape(starting_tiles,
-                                     (self._board_size, -1))
-        self._goal = np.reshape(self._sorted_tiles, (self._board_size, -1))
-        self._hole = '0'
+    def __init__(self, tiles: str, sz: int, hole: str = '0'):
+        self._sz = sz
+        self._sorted_tokens = [str(x) for x in range(sz ** 2)]
+        self._goal = np.reshape(self._sorted_tokens, (sz, -1))
+        self._state = np.reshape(tiles.split(','), (sz, -1))
+        self._hole = hole
+
+    def __repr__(self):
+        return str(self._state)
+
+    @property
+    def num_tiles(self):
+        return self._sz ** 2
+
+    @property
+    def num_rows(self):
+        return self._sz
 
     @property
     def goal(self):
-        return self._goal
+        return ','.join(self._sorted_tokens)
+
+    @property
+    def string(self):
+        return self.stringify(self._state)
 
     @property
     def state(self):
         return self._state
 
-    @state.setter
-    def state(self, value):
-        self._state = value
-
-    @property
-    def state_string(self):
-        return np.array2string(self._state.flatten())
-
-    @property
-    def goal_string(self):
-        return np.array2string(self._goal.flatten())
+    @staticmethod
+    def stringify(state):
+        return ','.join(state.flatten())
 
     def hole_pos(self):
         pos = np.where(self._state == self._hole)
@@ -49,21 +50,27 @@ class Board:
             raise ValueError('Tile out of bounds!')
         return self._state[pos]
 
-    def neighbors(self):
+    def actions(self):
         """
         find neighboring tiles to hole position
         """
         hole = self.hole_pos()
-        up = (hole[0] - 1, hole[1])
-        down = (hole[0] + 1, hole[1])
-        left = (hole[0], hole[1] - 1)
-        right = (hole[0], hole[1] + 1)
-        return [('UP', up),
-                ('DOWN', down),
-                ('LEFT', left),
-                ('RIGHT', right)]
+        actions_ = []
+        if hole[0] - 1 >= 0:
+            actions_.append(('U',
+                             (hole[0] - 1, hole[1])))
+        if hole[0] + 1 < self._sz:
+            actions_.append(('D',
+                             (hole[0] + 1, hole[1])))
+        if hole[1] - 1 >= 0:
+            actions_.append(('L',
+                             (hole[0], hole[1] - 1)))
+        if hole[1] + 1 < self._sz:
+            actions_.append(('R',
+                             (hole[0], hole[1] + 1)))
+        return actions_
 
-    def swap(self, pos: tuple = None):
+    def swap(self, pos):
         """
         position is tuple (R,C) of neighboring tile to hole
         """
@@ -73,9 +80,11 @@ class Board:
             temp_state = np.array(self._state, copy=True)
             temp_state[pos[0]][pos[1]] = self._hole
             temp_state[hole[0]][hole[1]] = tile
-            return True, temp_state
+            return Board(self.stringify(temp_state),
+                         sz=self._sz,
+                         hole=self._hole)
         except ValueError:
-            return False, self._state
+            return None
 
 
 class Node:
@@ -142,8 +151,13 @@ class BFS:
 
 
 if __name__ == "__main__":
-    board = Board(tiles="3,1,2,0,4,5,6,7,8")
-    # board = Board(tiles="0,1,2,3,4,5,6,7,8")
-    search = BFS(board)
-    node = search.solve()
-    print(node)
+    tiles = "0,1,2,3"
+    board = Board(tiles=tiles, sz=2)
+    print(board)
+    print(board.stringify(board.state))
+    actions = board.actions()
+    print(actions)
+    for action in actions:
+        print(action[0])
+        temp = board.swap(action[1])
+        print(temp)
