@@ -1,6 +1,4 @@
 from collections import deque
-import copy
-from math import sqrt
 from pprint import pprint
 
 import numpy as np
@@ -119,7 +117,7 @@ class Node:
 
 class BFS:
     def __init__(self, start_board):
-        self._goal = start_board.goal_string
+        self._goal = start_board.goal
         self._start_board = start_board
         self._frontier = deque()
         self._explored = set()
@@ -129,35 +127,31 @@ class BFS:
         root = Node(state=self._start_board,
                     path_cost=self._path_cost)
         self._frontier.append(root)
-        if root.state.state_string == self._goal:
+        if root.state.string == self._goal:
             return root
-        while True:
+        i = 0
+        while i < 10:
             if len(self._frontier) == 0:
                 raise ValueError('Goal not found.')
             node = self._frontier.popleft()
             pprint(node)
-            self._explored.add(node.state.state_string)
+            self._explored.add(node.state.string)
             print(self._explored)
-            actions = node.state.neighbors()
-            print(actions)
-            for action in actions:
-                res, new_state = node.state.swap(action[1])
-                print(res, new_state)
-                if res:
-                    child = Node(state=Board(state=new_state),
-                                 action=node.state.action[0],
-                                 path_cost=1,
-                                 parent=node)
+            actions = node.state.actions()
+            for action, tile in actions:
+                print(action, tile)
+                print(node.state)
+                state = node.state.swap(tile)
+                print(action, state)
+                child = Node(state=state,
+                             action=action,
+                             path_cost=1,
+                             parent=node)
+            i += 1
 
 
 if __name__ == "__main__":
-    tiles = "0,1,2,3"
-    board = Board(tiles=tiles, sz=2)
-    print(board)
-    print(board.stringify(board.state))
-    actions = board.actions()
-    print(actions)
-    for action in actions:
-        print(action[0])
-        temp = board.swap(action[1])
-        print(temp)
+    tiles = "3,1,2,0,4,5,6,7,8"
+    board = Board(tiles=tiles, sz=3)
+    bfs = BFS(board)
+    bfs.solve()
