@@ -75,7 +75,6 @@ class Board:
             hole = self.hole_pos()
             tile = self.tile(pos)
             temp_state = self._state.copy()
-            # temp_state = np.array(self._state, copy=True)
             temp_state[pos[0]][pos[1]] = self._hole
             temp_state[hole[0]][hole[1]] = tile
             return Board(self.stringify(temp_state),
@@ -97,6 +96,12 @@ class Node:
                     'action': self._action,
                     'path_cost': self._path_cost,
                     'parent': self.parent})
+
+    def __iter__(self):
+        node = self
+        while node:
+            yield node
+            node = node._parent
 
     @property
     def state(self):
@@ -123,10 +128,25 @@ class BFS:
         self._explored = set()
         self._path_cost = 0
         self._nodes_expanded = 0
+        self._fringe_sz = 0
+        self._max_fringe_sz = 0
 
     @property
     def nodes_expanded(self):
         return self._nodes_expanded
+
+    @property
+    def fringe_size(self):
+        return self._fringe_sz
+
+    @property
+    def max_fringe_size(self):
+        return self._max_fringe_sz
+
+    def update_fringe_size(self):
+        self._fringe_sz = len(self._frontier)
+        if self._fringe_sz > self._max_fringe_sz:
+            self._max_fringe_sz = self._fringe_sz
 
     def solve(self):
         root = Node(state=self._start_board,
@@ -139,6 +159,7 @@ class BFS:
                 raise ValueError('Goal not found.')
             node = self._frontier.popleft()
             if node.state.string == self._goal:
+                self.update_fringe_size()
                 return node
             self._nodes_expanded += 1
             self._explored.add(node.state.string)
@@ -151,30 +172,18 @@ class BFS:
                              parent=node)
                 if (child.state.string not in self._explored) and (child not in self._frontier):
                     self._frontier.append(child)
+                    self.update_fringe_size()
 
 
 class Summary:
-    def __init__(self, node: Node):
-        self._node = node
-        self._cost = 0
+    def __init__(self, child: Node):
+        self._child = child
 
     def path_cost(self):
-        self._cost = self._node.path_cost
-        node = self._node.parent
-        while node:
-            self._cost += node.path_cost
-            node = node.parent
-
-        return self._cost
+        return sum(n.path_cost for n in self._child)
 
     def actions(self):
-        actions = deque()
-        node = self._node
-        while node:
-            actions.appendleft(node.action)
-            node = node.parent
-        actions.popleft()
-        return actions
+        return list(reversed([n.action for n in self._child]))[1:]
 
 
 if __name__ == "__main__":
@@ -186,3 +195,5 @@ if __name__ == "__main__":
     summary = Summary(res)
     print(f"path cost {summary.path_cost()}")
     print(summary.actions())
+    print(f"fringe size: {bfs.fringe_size}")
+    print(f"max_fringe_size: {bfs.max_fringe_size}")
