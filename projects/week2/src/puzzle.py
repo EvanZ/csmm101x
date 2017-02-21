@@ -1,5 +1,4 @@
 from collections import deque
-from pprint import pprint
 
 import numpy as np
 
@@ -117,12 +116,17 @@ class Node:
 
 
 class BFS:
-    def __init__(self, start_board):
+    def __init__(self, start_board: Board):
         self._goal = start_board.goal
         self._start_board = start_board
         self._frontier = deque()
         self._explored = set()
         self._path_cost = 0
+        self._nodes_expanded = 0
+
+    @property
+    def nodes_expanded(self):
+        return self._nodes_expanded
 
     def solve(self):
         root = Node(state=self._start_board,
@@ -134,9 +138,10 @@ class BFS:
             if len(self._frontier) == 0:
                 raise ValueError('Goal not found.')
             node = self._frontier.popleft()
-            pprint(node)
+            if node.state.string == self._goal:
+                return node
+            self._nodes_expanded += 1
             self._explored.add(node.state.string)
-            print(self._explored)
             actions = node.state.actions()
             for action in actions:
                 state = node.state.act(action)
@@ -144,14 +149,40 @@ class BFS:
                              action=action,
                              path_cost=1,
                              parent=node)
-                if child.state.string == self._goal:
-                    return child
-                print(child.action, child.state)
+                if (child.state.string not in self._explored) and (child not in self._frontier):
+                    self._frontier.append(child)
+
+
+class Summary:
+    def __init__(self, node: Node):
+        self._node = node
+        self._cost = 0
+
+    def path_cost(self):
+        self._cost = self._node.path_cost
+        node = self._node.parent
+        while node:
+            self._cost += node.path_cost
+            node = node.parent
+
+        return self._cost
+
+    def actions(self):
+        actions = deque()
+        node = self._node
+        while node:
+            actions.appendleft(node.action)
+            node = node.parent
+        actions.popleft()
+        return actions
 
 
 if __name__ == "__main__":
-    init_tiles = "3,1,2,0,4,5,6,7,8"
+    init_tiles = "1,2,5,3,4,0,6,7,8"
     board = Board(tiles=init_tiles, sz=3)
     bfs = BFS(board)
     res = bfs.solve()
-    print(res.state)
+    print(f"nodes expanded {bfs.nodes_expanded}")
+    summary = Summary(res)
+    print(f"path cost {summary.path_cost()}")
+    print(summary.actions())
