@@ -16,14 +16,6 @@ class Board:
         return str(self._state)
 
     @property
-    def num_tiles(self):
-        return self._sz ** 2
-
-    @property
-    def num_rows(self):
-        return self._sz
-
-    @property
     def goal(self):
         return ','.join(self._sorted_tokens)
 
