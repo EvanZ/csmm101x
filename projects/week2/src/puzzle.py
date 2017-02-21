@@ -5,11 +5,11 @@ import numpy as np
 
 
 class Board:
-    def __init__(self, tiles: str, sz: int, hole: str = '0'):
+    def __init__(self, tiles_: str, sz: int, hole: str = '0'):
         self._sz = sz
         self._sorted_tokens = [str(x) for x in range(sz ** 2)]
         self._goal = np.reshape(self._sorted_tokens, (sz, -1))
-        self._state = np.reshape(tiles.split(','), (sz, -1))
+        self._state = np.reshape(tiles_.split(','), (sz, -1))
         self._hole = hole
 
     def __repr__(self):
@@ -48,6 +48,18 @@ class Board:
             raise ValueError('Tile out of bounds!')
         return self._state[pos]
 
+    def act(self, action):
+        hole = self.hole_pos()
+        lut = {
+            'U': (hole[0] - 1, hole[1]),
+            'D': (hole[0] + 1, hole[1]),
+            'L': (hole[0], hole[1] - 1),
+            'R': (hole[0], hole[1] + 1)
+        }
+        pos = lut[action]
+        board_ = self.swap(pos)
+        return board_
+
     def actions(self):
         """
         find neighboring tiles to hole position
@@ -55,17 +67,13 @@ class Board:
         hole = self.hole_pos()
         actions_ = []
         if hole[0] - 1 >= 0:
-            actions_.append(('U',
-                             (hole[0] - 1, hole[1])))
+            actions_.append('U')
         if hole[0] + 1 < self._sz:
-            actions_.append(('D',
-                             (hole[0] + 1, hole[1])))
+            actions_.append('D')
         if hole[1] - 1 >= 0:
-            actions_.append(('L',
-                             (hole[0], hole[1] - 1)))
+            actions_.append('L')
         if hole[1] + 1 < self._sz:
-            actions_.append(('R',
-                             (hole[0], hole[1] + 1)))
+            actions_.append('R')
         return actions_
 
     def swap(self, pos):
@@ -129,8 +137,7 @@ class BFS:
         self._frontier.append(root)
         if root.state.string == self._goal:
             return root
-        i = 0
-        while i < 10:
+        while True:
             if len(self._frontier) == 0:
                 raise ValueError('Goal not found.')
             node = self._frontier.popleft()
@@ -138,16 +145,15 @@ class BFS:
             self._explored.add(node.state.string)
             print(self._explored)
             actions = node.state.actions()
-            for action, tile in actions:
-                print(action, tile)
+            for action in actions:
+                print(action)
                 print(node.state)
-                state = node.state.swap(tile)
-                print(action, state)
+                state = node.state.act(action)
                 child = Node(state=state,
                              action=action,
                              path_cost=1,
                              parent=node)
-            i += 1
+                print(child)
 
 
 if __name__ == "__main__":
