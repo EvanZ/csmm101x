@@ -5,11 +5,11 @@ import numpy as np
 
 
 class Board:
-    def __init__(self, tiles_: str, sz: int, hole: str = '0'):
+    def __init__(self, tiles: str, sz: int, hole: str = '0'):
         self._sz = sz
         self._sorted_tokens = [str(x) for x in range(sz ** 2)]
         self._goal = np.reshape(self._sorted_tokens, (sz, -1))
-        self._state = np.reshape(tiles_.split(','), (sz, -1))
+        self._state = np.reshape(tiles.split(','), (sz, -1))
         self._hole = hole
 
     def __repr__(self):
@@ -75,7 +75,8 @@ class Board:
         try:
             hole = self.hole_pos()
             tile = self.tile(pos)
-            temp_state = np.array(self._state, copy=True)
+            temp_state = self._state.copy()
+            # temp_state = np.array(self._state, copy=True)
             temp_state[pos[0]][pos[1]] = self._hole
             temp_state[hole[0]][hole[1]] = tile
             return Board(self.stringify(temp_state),
@@ -138,18 +139,19 @@ class BFS:
             print(self._explored)
             actions = node.state.actions()
             for action in actions:
-                print(action)
-                print(node.state)
                 state = node.state.act(action)
                 child = Node(state=state,
                              action=action,
                              path_cost=1,
                              parent=node)
-                print(child)
+                if child.state.string == self._goal:
+                    return child
+                print(child.action, child.state)
 
 
 if __name__ == "__main__":
-    tiles = "3,1,2,0,4,5,6,7,8"
-    board = Board(tiles=tiles, sz=3)
+    init_tiles = "3,1,2,0,4,5,6,7,8"
+    board = Board(tiles=init_tiles, sz=3)
     bfs = BFS(board)
-    bfs.solve()
+    res = bfs.solve()
+    print(res.state)
