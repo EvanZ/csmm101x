@@ -1,4 +1,6 @@
 from collections import deque
+from resource import getrusage, RUSAGE_SELF
+from time import time
 
 import numpy as np
 
@@ -42,10 +44,10 @@ class Board:
     def act(self, action):
         hole = self.hole_pos()
         lut = {
-            'U': (hole[0] - 1, hole[1]),
-            'D': (hole[0] + 1, hole[1]),
-            'L': (hole[0], hole[1] - 1),
-            'R': (hole[0], hole[1] + 1)
+            'Up': (hole[0] - 1, hole[1]),
+            'Down': (hole[0] + 1, hole[1]),
+            'Left': (hole[0], hole[1] - 1),
+            'Right': (hole[0], hole[1] + 1)
         }
         pos = lut[action]
         board_ = self.swap(pos)
@@ -58,13 +60,13 @@ class Board:
         hole = self.hole_pos()
         actions_ = []
         if hole[0] - 1 >= 0:
-            actions_.append('U')
+            actions_.append('Up')
         if hole[0] + 1 < self._sz:
-            actions_.append('D')
+            actions_.append('Down')
         if hole[1] - 1 >= 0:
-            actions_.append('L')
+            actions_.append('Left')
         if hole[1] + 1 < self._sz:
-            actions_.append('R')
+            actions_.append('Right')
         return actions_
 
     def swap(self, pos):
@@ -119,9 +121,13 @@ class Node:
     def parent(self):
         return self._parent
 
+    @property
+    def depth(self):
+        return sum([1 for n in self]) - 1  # to account for 0 indexing
+
 
 class BFS:
-    def __init__(self, start_board: Board):
+    def __init__(self, start_board: Board, depth: int = 4):
         self._goal = start_board.goal
         self._start_board = start_board
         self._frontier = deque()
@@ -130,6 +136,10 @@ class BFS:
         self._nodes_expanded = 0
         self._fringe_sz = 0
         self._max_fringe_sz = 0
+        self._search_depth = 0
+        self._max_search_depth = 0
+        self._running_time = 0
+        self._depth_limit = depth
 
     @property
     def nodes_expanded(self):
@@ -143,23 +153,43 @@ class BFS:
     def max_fringe_size(self):
         return self._max_fringe_sz
 
+    @property
+    def search_depth(self):
+        return self._search_depth
+
+    @property
+    def max_search_depth(self):
+        return self._max_search_depth
+
+    @property
+    def running_time(self):
+        return self._running_time
+
     def update_fringe_size(self):
         self._fringe_sz = len(self._frontier)
         if self._fringe_sz > self._max_fringe_sz:
             self._max_fringe_sz = self._fringe_sz
 
     def solve(self):
+        start_time = time()
         root = Node(state=self._start_board,
                     path_cost=self._path_cost)
         self._frontier.append(root)
         if root.state.string == self._goal:
+            self._search_depth = root.depth
+            self._running_time = time() - start_time
             return root
         while True:
             if len(self._frontier) == 0:
+                self._running_time = time() - start_time
                 raise ValueError('Goal not found.')
             node = self._frontier.popleft()
+            if node.depth > self._depth_limit:
+                raise RuntimeError
             if node.state.string == self._goal:
                 self.update_fringe_size()
+                self._search_depth = node.depth
+                self._running_time = time() - start_time
                 return node
             self._nodes_expanded += 1
             self._explored.add(node.state.string)
@@ -170,6 +200,8 @@ class BFS:
                              action=action,
                              path_cost=1,
                              parent=node)
+                if child.depth > self._max_search_depth:
+                    self._max_search_depth = child.depth
                 if (child.state.string not in self._explored) and (child not in self._frontier):
                     self._frontier.append(child)
                     self.update_fringe_size()
@@ -185,15 +217,22 @@ class Summary:
     def actions(self):
         return list(reversed([n.action for n in self._child]))[1:]
 
+    def search_depth(self):
+        return self._child.depth
+
 
 if __name__ == "__main__":
     init_tiles = "1,2,5,3,4,0,6,7,8"
     board = Board(tiles=init_tiles, sz=3)
-    bfs = BFS(board)
+    bfs = BFS(board, depth=10)
     res = bfs.solve()
     print(f"nodes expanded {bfs.nodes_expanded}")
     summary = Summary(res)
     print(f"path cost {summary.path_cost()}")
-    print(summary.actions())
+    print(f"actions {summary.actions()}")
     print(f"fringe size: {bfs.fringe_size}")
     print(f"max_fringe_size: {bfs.max_fringe_size}")
+    print(f"search depth {bfs.search_depth}")
+    print(f"max search depth {bfs.max_search_depth}")
+    print(f"running time {bfs.running_time}")
+    print(f"{getrusage(RUSAGE_SELF)[2]}")
