@@ -1,3 +1,4 @@
+from argparse import ArgumentParser
 from collections import deque
 from resource import getrusage, RUSAGE_SELF
 from time import time
@@ -126,6 +127,18 @@ class Node:
         return sum([1 for n in self]) - 1  # to account for 0 indexing
 
 
+class DFS:
+    pass
+
+
+class AST:
+    pass
+
+
+class IDA:
+    pass
+
+
 class BFS:
     def __init__(self, start_board: Board, depth: int = 4):
         self._goal = start_board.goal
@@ -222,9 +235,20 @@ class Summary:
 
 
 if __name__ == "__main__":
-    init_tiles = "1,2,5,3,4,0,6,7,8"
-    board = Board(tiles=init_tiles, sz=3)
-    bfs = BFS(board, depth=10)
+    parser = ArgumentParser()
+    parser.add_argument("solver", help="algorithm (bfs | dfs)")
+    parser.add_argument("board", help="board string (0,1,2,3...)")
+    args = parser.parse_args()
+    print(args)
+    board = Board(tiles=args.board, sz=3)
+    algorithms = {
+        'bfs': BFS(board),
+        'dfs': BFS(board),
+        'ast': BFS(board),
+        'ida': BFS(board)
+    }
+
+    bfs = algorithms[args.solver]
     res = bfs.solve()
     print(f"nodes expanded {bfs.nodes_expanded}")
     summary = Summary(res)
