@@ -1,6 +1,7 @@
 import abc
 from argparse import ArgumentParser
 from collections import deque
+from math import sqrt
 from resource import getrusage, RUSAGE_SELF
 from time import time
 
@@ -8,11 +9,12 @@ import numpy as np
 
 
 class Board:
-    def __init__(self, tiles: str, sz: int, hole: str = '0'):
-        self._sz = sz
-        self._sorted_tokens = [str(x) for x in range(sz ** 2)]
-        self._goal = np.reshape(self._sorted_tokens, (sz, -1))
-        self._state = np.reshape(tiles.split(','), (sz, -1))
+    def __init__(self, tiles: str, hole: str = '0', sz: int = None):
+        board_ = tiles.split(',')
+        self._sz = sz or int(sqrt(len(board_)))
+        self._sorted_tokens = [str(x) for x in range(self._sz ** 2)]
+        self._goal = np.reshape(self._sorted_tokens, (self._sz, -1))
+        self._state = np.reshape(board_, (self._sz, -1))
         self._hole = hole
 
     def __repr__(self):
@@ -82,8 +84,8 @@ class Board:
             temp_state[pos[0]][pos[1]] = self._hole
             temp_state[hole[0]][hole[1]] = tile
             return Board(self.stringify(temp_state),
-                         sz=self._sz,
-                         hole=self._hole)
+                         hole=self._hole,
+                         sz=self._sz)
         except ValueError:
             return None
 
@@ -125,7 +127,7 @@ class Node:
 
     @property
     def depth(self):
-        return sum([1 for n in self]) - 1  # to account for 0 indexing
+        return sum(1 for _ in self) - 1  # to account for 0 indexing
 
 
 class Solver(metaclass=abc.ABCMeta):
@@ -249,13 +251,11 @@ class Summary:
 
 if __name__ == "__main__":
     try:
-        for sc in Solver.__subclasses__():
-            print(sc.__name__)
         parser = ArgumentParser()
         parser.add_argument("solver", help="algorithm (bfs | dfs)")
         parser.add_argument("board", help="board string (0,1,2,3...)")
         args = parser.parse_args()
-        board = Board(tiles=args.board, sz=3)
+        board = Board(tiles=args.board)
         print("***STARTING STATE***")
         print(board.state)
         algorithms = {
@@ -278,7 +278,7 @@ if __name__ == "__main__":
         print(f"search depth {search.search_depth}")
         print(f"max search depth {search.max_search_depth}")
         print(f"running time {search.running_time}")
-        print(f"{getrusage(RUSAGE_SELF)[2]}")
+        print(f"memory usage {getrusage(RUSAGE_SELF)[2]}")
     except TypeError as e:
         print(e)
         exit(1)
