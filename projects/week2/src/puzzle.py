@@ -260,9 +260,9 @@ if __name__ == "__main__":
         print(board.state)
         algorithms = {
             'bfs': BFS(board, depth=100),
-            'dfs': DFS(board, depth=100),
-            'ast': BFS(board, depth=100),
-            'ida': BFS(board, depth=100)
+            # 'dfs': DFS(board, depth=100),
+            # 'ast': BFS(board, depth=100),
+            # 'ida': BFS(board, depth=100)
         }
 
         search = algorithms[args.solver]
