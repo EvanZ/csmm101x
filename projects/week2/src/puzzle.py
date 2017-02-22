@@ -182,11 +182,6 @@ class Solver(metaclass=abc.ABCMeta):
         return
 
 
-class DFS(Solver):
-    def solve(self):
-        pass
-
-
 class AST(Solver):
     def solve(self):
         pass
@@ -235,6 +230,47 @@ class BFS(Solver):
                     self.update_fringe_size()
 
 
+class DFS(Solver):
+
+    def solve(self):
+        start_time = time()
+        root = Node(state=self._start_board,
+                    path_cost=self._path_cost)
+        self._frontier.append(root)
+        if root.state.string == self._goal:
+            self._search_depth = root.depth
+            self._running_time = time() - start_time
+            return root
+        while True:
+            if len(self._frontier) == 0:
+                self._running_time = time() - start_time
+                raise ValueError('Goal not found.')
+            node = self._frontier.pop()
+            print(node.state)
+            self._explored.add(node.state.string)
+            if node.depth > self._depth_limit:
+                raise RuntimeError('Depth limit exceeded!')
+            if node.state.string == self._goal:
+                self.update_fringe_size()
+                self._search_depth = node.depth
+                self._running_time = time() - start_time
+                return node
+            self._nodes_expanded += 1
+            actions = node.state.actions()
+            for action in list(reversed(actions)):
+                state = node.state.act(action)
+                child = Node(state=state,
+                             action=action,
+                             path_cost=1,
+                             parent=node)
+                if child.depth > self._max_search_depth:
+                    self._max_search_depth = child.depth
+                if (child.state.string not in self._explored) and \
+                        (child.state.string not in [n.state.string for n in self._frontier]):
+                    self._frontier.append(node)
+                    self.update_fringe_size()
+
+
 class Summary:
     def __init__(self, child: Node):
         self._child = child
@@ -260,7 +296,7 @@ if __name__ == "__main__":
         print(board.state)
         algorithms = {
             'bfs': BFS(board, depth=10),
-            # 'dfs': DFS(board, depth=100),
+            'dfs': DFS(board, depth=20),
             # 'ast': BFS(board, depth=100),
             # 'ida': BFS(board, depth=100)
         }
