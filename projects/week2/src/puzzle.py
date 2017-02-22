@@ -91,47 +91,46 @@ class Board:
 
 
 class Node:
-    def __init__(self, state=None, action=None, path_cost=None, parent=None):
-        self._state = state
-        self._action = action
-        self._path_cost = path_cost
-        self._parent = parent
+    def __init__(self, state, action=None, path_cost=None, parent=None):
+        if not parent:
+            self._state = state
+            self._actions = []
+            self._path_costs = []
+        else:
+            self._state = state
+            self._actions = parent.actions[:]
+            self._actions.append(action)
+            self._path_costs = parent.path_costs[:]
+            self._path_costs.append(path_cost)
 
     def __repr__(self):
         return str({'state': self._state.state,
-                    'action': self._action,
-                    'path_cost': self._path_cost,
-                    'parent': self.parent})
-
-    def __iter__(self):
-        node = self
-        while node:
-            yield node
-            node = node._parent
+                    'action': self._actions,
+                    'path_cost': self._path_costs})
 
     @property
     def state(self):
         return self._state
 
     @property
-    def action(self):
-        return self._action
+    def actions(self):
+        return self._actions
+
+    @property
+    def path_costs(self):
+        return self._path_costs
 
     @property
     def path_cost(self):
-        return self._path_cost
-
-    @property
-    def parent(self):
-        return self._parent
+        return sum(self._path_costs)
 
     @property
     def depth(self):
-        return sum(1 for _ in self) - 1  # to account for 0 indexing
+        return len(self._actions)  # to account for 0 indexing
 
 
 class Solver(metaclass=abc.ABCMeta):
-    def __init__(self, start_board: Board, depth: int = 4):
+    def __init__(self, start_board: Board, depth: int = None):
         self._goal = start_board.goal
         self._start_board = start_board
         self._frontier = deque()
@@ -195,8 +194,7 @@ class IDA(Solver):
 class BFS(Solver):
     def solve(self):
         start_time = time()
-        root = Node(state=self._start_board,
-                    path_cost=self._path_cost)
+        root = Node(state=self._start_board)
         self._frontier.append(root)
         if root.state.string == self._goal:
             self._search_depth = root.depth
@@ -207,8 +205,6 @@ class BFS(Solver):
                 self._running_time = time() - start_time
                 raise ValueError('Goal not found.')
             node = self._frontier.popleft()
-            if node.depth > self._depth_limit:
-                raise RuntimeError('Depth limit exceeded!')
             if node.state.string == self._goal:
                 self.update_fringe_size()
                 self._search_depth = node.depth
@@ -225,17 +221,16 @@ class BFS(Solver):
                              parent=node)
                 if child.depth > self._max_search_depth:
                     self._max_search_depth = child.depth
-                if (child.state.string not in self._explored) and (child not in self._frontier):
+                if child.state.string not in self._explored:
                     self._frontier.append(child)
+                    self._explored.add(child.state.string)
                     self.update_fringe_size()
 
 
 class DFS(Solver):
-
     def solve(self):
         start_time = time()
-        root = Node(state=self._start_board,
-                    path_cost=self._path_cost)
+        root = Node(state=self._start_board)
         self._frontier.append(root)
         if root.state.string == self._goal:
             self._search_depth = root.depth
@@ -246,10 +241,7 @@ class DFS(Solver):
                 self._running_time = time() - start_time
                 raise ValueError('Goal not found.')
             node = self._frontier.pop()
-            print(node.state)
             self._explored.add(node.state.string)
-            if node.depth > self._depth_limit:
-                raise RuntimeError('Depth limit exceeded!')
             if node.state.string == self._goal:
                 self.update_fringe_size()
                 self._search_depth = node.depth
@@ -265,24 +257,10 @@ class DFS(Solver):
                              parent=node)
                 if child.depth > self._max_search_depth:
                     self._max_search_depth = child.depth
-                if (child.state.string not in self._explored) and \
-                        (child.state.string not in [n.state.string for n in self._frontier]):
-                    self._frontier.append(node)
+                if child.state.string not in self._explored:
+                    self._frontier.append(child)
+                    self._explored.add(child.state.string)
                     self.update_fringe_size()
-
-
-class Summary:
-    def __init__(self, child: Node):
-        self._child = child
-
-    def path_cost(self):
-        return sum(n.path_cost for n in self._child)
-
-    def actions(self):
-        return list(reversed([n.action for n in self._child]))[1:]
-
-    def search_depth(self):
-        return self._child.depth
 
 
 if __name__ == "__main__":
@@ -295,8 +273,8 @@ if __name__ == "__main__":
         print("***STARTING STATE***")
         print(board.state)
         algorithms = {
-            'bfs': BFS(board, depth=10),
-            'dfs': DFS(board, depth=20),
+            'bfs': BFS(board),
+            'dfs': DFS(board),
             # 'ast': BFS(board, depth=100),
             # 'ida': BFS(board, depth=100)
         }
@@ -304,11 +282,10 @@ if __name__ == "__main__":
         search = algorithms[args.solver]
         res = search.solve()
         print("***SOLUTION STATE***")
-        print(res.state)
+        print(res)
         print(f"nodes expanded {search.nodes_expanded}")
-        summary = Summary(res)
-        print(f"path cost {summary.path_cost()}")
-        print(f"actions {summary.actions()}")
+        print(f"path cost {res.path_cost}")
+        print(f"actions {res.actions}")
         print(f"fringe size: {search.fringe_size}")
         print(f"max_fringe_size: {search.max_fringe_size}")
         print(f"search depth {search.search_depth}")
