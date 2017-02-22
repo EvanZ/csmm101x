@@ -1,3 +1,4 @@
+import abc
 from argparse import ArgumentParser
 from collections import deque
 from resource import getrusage, RUSAGE_SELF
@@ -127,19 +128,7 @@ class Node:
         return sum([1 for n in self]) - 1  # to account for 0 indexing
 
 
-class DFS:
-    pass
-
-
-class AST:
-    pass
-
-
-class IDA:
-    pass
-
-
-class BFS:
+class Solver(metaclass=abc.ABCMeta):
     def __init__(self, start_board: Board, depth: int = 4):
         self._goal = start_board.goal
         self._start_board = start_board
@@ -183,6 +172,30 @@ class BFS:
         if self._fringe_sz > self._max_fringe_sz:
             self._max_fringe_sz = self._fringe_sz
 
+    @abc.abstractmethod
+    def solve(self):
+        """
+        To be implemented by detailed search strategies
+        """
+        return
+
+
+class DFS(Solver):
+    def solve(self):
+        pass
+
+
+class AST(Solver):
+    def solve(self):
+        pass
+
+
+class IDA(Solver):
+    def solve(self):
+        pass
+
+
+class BFS(Solver):
     def solve(self):
         start_time = time()
         root = Node(state=self._start_board,
@@ -235,28 +248,37 @@ class Summary:
 
 
 if __name__ == "__main__":
-    parser = ArgumentParser()
-    parser.add_argument("solver", help="algorithm (bfs | dfs)")
-    parser.add_argument("board", help="board string (0,1,2,3...)")
-    args = parser.parse_args()
-    print(args)
-    board = Board(tiles=args.board, sz=3)
-    algorithms = {
-        'bfs': BFS(board),
-        'dfs': BFS(board),
-        'ast': BFS(board),
-        'ida': BFS(board)
-    }
+    try:
+        for sc in Solver.__subclasses__():
+            print(sc.__name__)
+        parser = ArgumentParser()
+        parser.add_argument("solver", help="algorithm (bfs | dfs)")
+        parser.add_argument("board", help="board string (0,1,2,3...)")
+        args = parser.parse_args()
+        board = Board(tiles=args.board, sz=3)
+        print("***STARTING STATE***")
+        print(board.state)
+        algorithms = {
+            'bfs': BFS(board, depth=100),
+            'dfs': DFS(board, depth=100),
+            'ast': BFS(board, depth=100),
+            'ida': BFS(board, depth=100)
+        }
 
-    bfs = algorithms[args.solver]
-    res = bfs.solve()
-    print(f"nodes expanded {bfs.nodes_expanded}")
-    summary = Summary(res)
-    print(f"path cost {summary.path_cost()}")
-    print(f"actions {summary.actions()}")
-    print(f"fringe size: {bfs.fringe_size}")
-    print(f"max_fringe_size: {bfs.max_fringe_size}")
-    print(f"search depth {bfs.search_depth}")
-    print(f"max search depth {bfs.max_search_depth}")
-    print(f"running time {bfs.running_time}")
-    print(f"{getrusage(RUSAGE_SELF)[2]}")
+        search = algorithms[args.solver]
+        res = search.solve()
+        print("***SOLUTION STATE***")
+        print(res.state)
+        print(f"nodes expanded {search.nodes_expanded}")
+        summary = Summary(res)
+        print(f"path cost {summary.path_cost()}")
+        print(f"actions {summary.actions()}")
+        print(f"fringe size: {search.fringe_size}")
+        print(f"max_fringe_size: {search.max_fringe_size}")
+        print(f"search depth {search.search_depth}")
+        print(f"max search depth {search.max_search_depth}")
+        print(f"running time {search.running_time}")
+        print(f"{getrusage(RUSAGE_SELF)[2]}")
+    except TypeError as e:
+        print(e)
+        exit(1)
