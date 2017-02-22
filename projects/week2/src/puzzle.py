@@ -213,7 +213,7 @@ class BFS(Solver):
                 raise ValueError('Goal not found.')
             node = self._frontier.popleft()
             if node.depth > self._depth_limit:
-                raise RuntimeError
+                raise RuntimeError('Depth limit exceeded!')
             if node.state.string == self._goal:
                 self.update_fringe_size()
                 self._search_depth = node.depth
@@ -259,7 +259,7 @@ if __name__ == "__main__":
         print("***STARTING STATE***")
         print(board.state)
         algorithms = {
-            'bfs': BFS(board, depth=100),
+            'bfs': BFS(board, depth=10),
             # 'dfs': DFS(board, depth=100),
             # 'ast': BFS(board, depth=100),
             # 'ida': BFS(board, depth=100)
@@ -280,5 +280,8 @@ if __name__ == "__main__":
         print(f"running time {search.running_time}")
         print(f"memory usage {getrusage(RUSAGE_SELF)[2]}")
     except TypeError as e:
+        print(e)
+        exit(1)
+    except RuntimeError as e:
         print(e)
         exit(1)
