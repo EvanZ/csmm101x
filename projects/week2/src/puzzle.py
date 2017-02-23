@@ -1,4 +1,5 @@
 import abc
+import heapq
 from argparse import ArgumentParser
 from collections import deque
 from math import sqrt
@@ -21,8 +22,20 @@ class Board:
         return str(self._state)
 
     @property
+    def size(self):
+        return self._sz
+
+    @property
     def goal(self):
         return ','.join(self._sorted_tokens)
+
+    @property
+    def sorted_tokens(self):
+        return self._sorted_tokens
+
+    @property
+    def goal2D(self):
+        return self._goal
 
     @property
     def string(self):
@@ -35,6 +48,11 @@ class Board:
     @staticmethod
     def stringify(state):
         return ','.join(state.flatten())
+
+    @staticmethod
+    def find_tile(state, tile):
+        pos = np.where(state == tile)
+        return pos[0][0], pos[1][0]
 
     def hole_pos(self):
         pos = np.where(self._state == self._hole)
@@ -106,7 +124,7 @@ class Node:
     def __repr__(self):
         return str({'state': self._state.state,
                     'action': self._actions,
-                    'path_cost': self._path_costs})
+                    'path_cost': self.path_cost})
 
     @property
     def state(self):
@@ -182,8 +200,56 @@ class Solver(metaclass=abc.ABCMeta):
 
 
 class AST(Solver):
+    def __init__(self, start_board: Board, depth: int = None):
+        super().__init__(start_board, depth)
+        self._frontier = []
+
+    @staticmethod
+    def h(state):
+        cost = 0
+        for r in range(state.size):
+            for c in range(state.size):
+                tok = int(state.tile((r, c)))
+                r_goal, c_goal = divmod(tok, state.size)
+                cost += abs(r_goal-r) + abs(c_goal-c)
+        return cost + np.random.rand()
+
     def solve(self):
-        pass
+        start_time = time()
+        root = Node(state=self._start_board)
+        self._frontier.append((root.path_cost, root))
+        heapq.heapify(self._frontier)
+        if root.state.string == self._goal:
+            self._search_depth = root.depth
+            self._running_time = time() - start_time
+            return root
+        while True:
+            if len(self._frontier) == 0:
+                self._running_time = time() - start_time
+                raise ValueError('Goal not found.')
+            cost, node = heapq.heappop(self._frontier)
+            if node.state.string == self._goal:
+                self.update_fringe_size()
+                self._search_depth = node.depth
+                self._running_time = time() - start_time
+                return node
+            self._nodes_expanded += 1
+            self._explored.add(node.state.string)
+            actions = node.state.actions()
+            for index, action in enumerate(actions):
+                state = node.state.act(action)
+                child = Node(state=state,
+                             action=action,
+                             path_cost=1,
+                             parent=node)
+                if child.depth > self._max_search_depth:
+                    self._max_search_depth = child.depth
+                if child.state.string not in self._explored:
+                    print(child.path_cost, child)
+                    heapq.heappush(self._frontier,
+                                   (child.path_cost + self.h(state), child))
+                    self._explored.add(child.state.string)
+                    self.update_fringe_size()
 
 
 class IDA(Solver):
@@ -275,7 +341,7 @@ if __name__ == "__main__":
         algorithms = {
             'bfs': BFS(board),
             'dfs': DFS(board),
-            # 'ast': BFS(board, depth=100),
+            'ast': AST(board),
             # 'ida': BFS(board, depth=100)
         }
 
