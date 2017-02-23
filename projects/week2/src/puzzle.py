@@ -203,6 +203,12 @@ class AST(Solver):
     def __init__(self, start_board: Board, depth: int = None):
         super().__init__(start_board, depth)
         self._frontier = []
+        self.action_priority = {
+            'Up': 0,
+            'Down': 1,
+            'Left': 2,
+            'Right': 3
+        }
 
     @staticmethod
     def h(state):
@@ -211,13 +217,13 @@ class AST(Solver):
             for c in range(state.size):
                 tok = int(state.tile((r, c)))
                 r_goal, c_goal = divmod(tok, state.size)
-                cost += abs(r_goal-r) + abs(c_goal-c)
-        return cost + np.random.rand()
+                cost += abs(r_goal - r) + abs(c_goal - c)
+        return cost
 
     def solve(self):
         start_time = time()
         root = Node(state=self._start_board)
-        self._frontier.append((root.path_cost, root))
+        self._frontier.append((root.path_cost, None, root))
         heapq.heapify(self._frontier)
         if root.state.string == self._goal:
             self._search_depth = root.depth
@@ -227,7 +233,7 @@ class AST(Solver):
             if len(self._frontier) == 0:
                 self._running_time = time() - start_time
                 raise ValueError('Goal not found.')
-            cost, node = heapq.heappop(self._frontier)
+            cost, action, node = heapq.heappop(self._frontier)
             if node.state.string == self._goal:
                 self.update_fringe_size()
                 self._search_depth = node.depth
@@ -247,7 +253,9 @@ class AST(Solver):
                 if child.state.string not in self._explored:
                     print(child.path_cost, child)
                     heapq.heappush(self._frontier,
-                                   (child.path_cost + self.h(state), child))
+                                   (child.path_cost + self.h(state),
+                                    self.action_priority[action],
+                                    child))
                     self._explored.add(child.state.string)
                     self.update_fringe_size()
 
