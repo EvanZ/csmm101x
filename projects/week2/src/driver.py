@@ -11,15 +11,12 @@ if __name__ == "__main__":
         parser.add_argument("board", help="board string (0,1,2,3...)")
         args = parser.parse_args()
         board = Board(tiles=args.board)
-        print("***STARTING STATE***")
-        print(board.state)
         algorithms = {
             'bfs': BFS(board),
             'dfs': DFS(board),
             'ast': AST(board),
             # 'ida': BFS(board, depth=100)
         }
-
         search = algorithms[args.solver]
         res = search.solve()
         with open('output.txt', 'w+') as f:
@@ -32,6 +29,9 @@ if __name__ == "__main__":
             f.write(f"max_search_depth: {search.max_search_depth}\n")
             f.write(f"running_time: {search.running_time}\n")
             f.write(f"max_ram_usage: {getrusage(RUSAGE_SELF)[2]/(1024**2)}\n")
+        print(f"original board: {res}")
+        print(f"actions: {res.actions}")
+        print(f"path_cost: {res.path_cost}")
     except TypeError as e:
         print(e)
         exit(1)
