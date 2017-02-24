@@ -2,24 +2,20 @@ import abc
 import heapq
 from argparse import ArgumentParser
 from collections import deque
+from copy import deepcopy
 from math import sqrt
+from random import random
 from resource import getrusage, RUSAGE_SELF
 from time import time
-
-import numpy as np
-
 
 class Board:
     def __init__(self, tiles: str, hole: str = '0', sz: int = None):
         board_ = tiles.split(',')
         self._sz = sz or int(sqrt(len(board_)))
         self._sorted_tokens = [str(x) for x in range(self._sz ** 2)]
-        # self._goal = np.reshape(self._sorted_tokens, (self._sz, -1))
         self._goal = [[str(i + j * self._sz) for i in range(self._sz)] for j in range(self._sz)]
-        self._state = np.reshape(board_, (self._sz, -1))
-        # self._state = [[board_[i + j * self._sz] for i in range(self._sz)] for j in range(self._sz)]
+        self._state = [[board_[i + j * self._sz] for i in range(self._sz)] for j in range(self._sz)]
         self._hole = hole
-        # self._hole_pos = self.hole_pos()
         self._valid_moves = self.valid_moves()
         self._neighbors = self.neighbors()
 
@@ -52,13 +48,10 @@ class Board:
 
     @staticmethod
     def stringify(state):
-        # return ','.join(state.flatten())
         stringified = ','.join([item for sublist in state for item in sublist])
         return stringified
 
     def hole_pos(self):
-        # pos = np.where(self._state == self._hole)
-        # return pos[0][0], pos[1][0]
         ix = [self._state[r][c] == self._hole for r in range(self._sz)
               for c in range(self._sz)].index(True)
         hole_pos_ = divmod(ix, self._sz)
@@ -104,7 +97,7 @@ class Board:
         """
         hole = self.hole_pos()
         tile = self.tile(pos)
-        temp_state = self._state.copy()
+        temp_state = deepcopy(self._state)
         temp_state[pos[0]][pos[1]] = self._hole
         temp_state[hole[0]][hole[1]] = tile
         new_board = Board(self.stringify(temp_state),
@@ -259,9 +252,8 @@ class AST(Solver):
                     heapq.heappush(self._frontier,
                                    (child.path_cost + self.h(state),
                                     self.action_priority[action],
-                                    np.random.rand(),
+                                    random(),
                                     child))
-                    print(child.path_cost + self.h(state), action, state)
                     self._explored.add(child.state.string)
                     self.update_fringe_size()
 
@@ -280,7 +272,6 @@ class BFS(Solver):
             self._search_depth = root.depth
             self._running_time = time() - start_time
             return root
-        print(root)
         while True:
             if len(self._frontier) == 0:
                 self._running_time = time() - start_time
@@ -336,7 +327,6 @@ class DFS(Solver):
                              action=action,
                              path_cost=1,
                              parent=node)
-                print(child)
                 if child.depth > self._max_search_depth:
                     self._max_search_depth = child.depth
                 if child.state.string not in self._explored:
