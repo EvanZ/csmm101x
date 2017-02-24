@@ -17,9 +17,9 @@ class Board:
         # self._goal = np.reshape(self._sorted_tokens, (self._sz, -1))
         self._goal = [[str(i + j * self._sz) for i in range(self._sz)] for j in range(self._sz)]
         self._state = np.reshape(board_, (self._sz, -1))
-        # self._state = [[board_[i + j * self._sz] for i in range(self._sz)] for j in range(self._sz)].copy()
+        # self._state = [[board_[i + j * self._sz] for i in range(self._sz)] for j in range(self._sz)]
         self._hole = hole
-        self._hole_pos = self.hole_pos()
+        # self._hole_pos = self.hole_pos()
         self._valid_moves = self.valid_moves()
         self._neighbors = self.neighbors()
 
@@ -68,7 +68,7 @@ class Board:
         return self._state[pos[0]][pos[1]]
 
     def neighbors(self):
-        r, c = self._hole_pos
+        r, c = self.hole_pos()
         neighbors = {
             'Up': (r - 1, c),
             'Down': (r + 1, c),
@@ -86,7 +86,7 @@ class Board:
         """
         find neighboring tiles to hole position
         """
-        hole = self._hole_pos
+        hole = self.hole_pos()
         actions_ = []
         if hole[0] > 0:
             actions_.append('Up')
@@ -102,7 +102,7 @@ class Board:
         """
         position is tuple (R,C) of neighboring tile to hole
         """
-        hole = self._hole_pos
+        hole = self.hole_pos()
         tile = self.tile(pos)
         temp_state = self._state.copy()
         temp_state[pos[0]][pos[1]] = self._hole
