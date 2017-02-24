@@ -14,12 +14,21 @@ class Board:
         board_ = tiles.split(',')
         self._sz = sz or int(sqrt(len(board_)))
         self._sorted_tokens = [str(x) for x in range(self._sz ** 2)]
-        self._goal = np.reshape(self._sorted_tokens, (self._sz, -1))
+        # self._goal = np.reshape(self._sorted_tokens, (self._sz, -1))
+        self._goal = [[str(i + j * self._sz) for i in range(self._sz)] for j in range(self._sz)]
         self._state = np.reshape(board_, (self._sz, -1))
+        # self._state = [[board_[i + j * self._sz] for i in range(self._sz)] for j in range(self._sz)].copy()
         self._hole = hole
+        self._hole_pos = self.hole_pos()
+        self._valid_moves = self.valid_moves()
+        self._neighbors = self.neighbors()
 
     def __repr__(self):
         return str(self._state)
+
+    @property
+    def actions(self):
+        return self._valid_moves
 
     @property
     def size(self):
@@ -34,10 +43,6 @@ class Board:
         return self._sorted_tokens
 
     @property
-    def goal2D(self):
-        return self._goal
-
-    @property
     def string(self):
         return self.stringify(self._state)
 
@@ -47,47 +52,49 @@ class Board:
 
     @staticmethod
     def stringify(state):
-        return ','.join(state.flatten())
-
-    @staticmethod
-    def find_tile(state, tile):
-        pos = np.where(state == tile)
-        return pos[0][0], pos[1][0]
+        # return ','.join(state.flatten())
+        stringified = ','.join([item for sublist in state for item in sublist])
+        return stringified
 
     def hole_pos(self):
-        pos = np.where(self._state == self._hole)
-        return pos[0][0], pos[1][0]
+        # pos = np.where(self._state == self._hole)
+        # return pos[0][0], pos[1][0]
+        ix = [self._state[r][c] == self._hole for r in range(self._sz)
+              for c in range(self._sz)].index(True)
+        hole_pos_ = divmod(ix, self._sz)
+        return hole_pos_
 
     def tile(self, pos):
-        if pos[0] < 0 or pos[1] < 0:
-            raise ValueError('Tile out of bounds!')
-        return self._state[pos]
+        return self._state[pos[0]][pos[1]]
+
+    def neighbors(self):
+        r, c = self._hole_pos
+        neighbors = {
+            'Up': (r - 1, c),
+            'Down': (r + 1, c),
+            'Left': (r, c - 1),
+            'Right': (r, c + 1)
+        }
+        return neighbors
 
     def act(self, action):
-        hole = self.hole_pos()
-        lut = {
-            'Up': (hole[0] - 1, hole[1]),
-            'Down': (hole[0] + 1, hole[1]),
-            'Left': (hole[0], hole[1] - 1),
-            'Right': (hole[0], hole[1] + 1)
-        }
-        pos = lut[action]
+        pos = self._neighbors[action]
         board_ = self.swap(pos)
         return board_
 
-    def actions(self):
+    def valid_moves(self):
         """
         find neighboring tiles to hole position
         """
-        hole = self.hole_pos()
+        hole = self._hole_pos
         actions_ = []
-        if hole[0] - 1 >= 0:
+        if hole[0] > 0:
             actions_.append('Up')
-        if hole[0] + 1 < self._sz:
+        if hole[0] < self._sz - 1:
             actions_.append('Down')
-        if hole[1] - 1 >= 0:
+        if hole[1] > 0:
             actions_.append('Left')
-        if hole[1] + 1 < self._sz:
+        if hole[1] < self._sz - 1:
             actions_.append('Right')
         return actions_
 
@@ -95,17 +102,15 @@ class Board:
         """
         position is tuple (R,C) of neighboring tile to hole
         """
-        try:
-            hole = self.hole_pos()
-            tile = self.tile(pos)
-            temp_state = self._state.copy()
-            temp_state[pos[0]][pos[1]] = self._hole
-            temp_state[hole[0]][hole[1]] = tile
-            return Board(self.stringify(temp_state),
-                         hole=self._hole,
-                         sz=self._sz)
-        except ValueError:
-            return None
+        hole = self._hole_pos
+        tile = self.tile(pos)
+        temp_state = self._state.copy()
+        temp_state[pos[0]][pos[1]] = self._hole
+        temp_state[hole[0]][hole[1]] = tile
+        new_board = Board(self.stringify(temp_state),
+                          hole=self._hole,
+                          sz=self._sz)
+        return new_board
 
 
 class Node:
@@ -223,7 +228,7 @@ class AST(Solver):
     def solve(self):
         start_time = time()
         root = Node(state=self._start_board)
-        self._frontier.append((root.path_cost, None, root))
+        self._frontier.append((root.path_cost, None, 0, root))
         heapq.heapify(self._frontier)
         if root.state.string == self._goal:
             self._search_depth = root.depth
@@ -233,7 +238,7 @@ class AST(Solver):
             if len(self._frontier) == 0:
                 self._running_time = time() - start_time
                 raise ValueError('Goal not found.')
-            cost, action, node = heapq.heappop(self._frontier)
+            cost, action, r, node = heapq.heappop(self._frontier)
             if node.state.string == self._goal:
                 self.update_fringe_size()
                 self._search_depth = node.depth
@@ -241,7 +246,7 @@ class AST(Solver):
                 return node
             self._nodes_expanded += 1
             self._explored.add(node.state.string)
-            actions = node.state.actions()
+            actions = node.state.actions
             for index, action in enumerate(actions):
                 state = node.state.act(action)
                 child = Node(state=state,
@@ -251,11 +256,12 @@ class AST(Solver):
                 if child.depth > self._max_search_depth:
                     self._max_search_depth = child.depth
                 if child.state.string not in self._explored:
-                    print(child.path_cost, child)
                     heapq.heappush(self._frontier,
                                    (child.path_cost + self.h(state),
                                     self.action_priority[action],
+                                    np.random.rand(),
                                     child))
+                    print(child.path_cost + self.h(state), action, state)
                     self._explored.add(child.state.string)
                     self.update_fringe_size()
 
@@ -274,6 +280,7 @@ class BFS(Solver):
             self._search_depth = root.depth
             self._running_time = time() - start_time
             return root
+        print(root)
         while True:
             if len(self._frontier) == 0:
                 self._running_time = time() - start_time
@@ -286,7 +293,7 @@ class BFS(Solver):
                 return node
             self._nodes_expanded += 1
             self._explored.add(node.state.string)
-            actions = node.state.actions()
+            actions = node.state.actions
             for action in actions:
                 state = node.state.act(action)
                 child = Node(state=state,
@@ -322,13 +329,14 @@ class DFS(Solver):
                 self._running_time = time() - start_time
                 return node
             self._nodes_expanded += 1
-            actions = node.state.actions()
+            actions = node.state.actions
             for action in list(reversed(actions)):
                 state = node.state.act(action)
                 child = Node(state=state,
                              action=action,
                              path_cost=1,
                              parent=node)
+                print(child)
                 if child.depth > self._max_search_depth:
                     self._max_search_depth = child.depth
                 if child.state.string not in self._explored:
