@@ -2,6 +2,9 @@
 edX course on AI
 
 ## Week 2 project
+### <code>Python 3.6.</code>
+[![Travis](https://img.shields.io/travis/rust-lang/rust.svg?style=flat-square)]()
+
 Implement 8-puzzle solver with BFS, DFS, A-star, and iterative depth
 A-star.
 
