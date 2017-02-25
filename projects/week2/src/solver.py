@@ -4,8 +4,8 @@ from collections import deque
 from random import random
 from time import time
 
-from board import Board
-from node import Node
+from src.board import Board
+from src.node import Node
 
 
 class Solver(metaclass=abc.ABCMeta):
@@ -57,7 +57,11 @@ class Solver(metaclass=abc.ABCMeta):
         """
         To be implemented by detailed search strategies
         """
-        return
+        raise NotImplementedError("Need to implement a concrete class with solve method.")
+
+
+class IDA(Solver):
+    pass
 
 
 class AST(Solver):
@@ -119,11 +123,6 @@ class AST(Solver):
                                     child))
                     self._explored.add(child.state.string)
                     self.update_fringe_size()
-
-
-class IDA(Solver):
-    def solve(self):
-        pass
 
 
 class BFS(Solver):

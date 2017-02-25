@@ -11,12 +11,13 @@ See project requirements here:
 
 https://courses.edx.org/courses/course-v1:ColumbiaX+CSMM.101x+1T2017/courseware/ea3118a1b62849b99423f8b1182e1bbf/a1f977f8f5ab4e79a123133a94d77c7e/
 
-I use 3 classes to implement solutions:
+I use 4 classes to implement solutions:
 * Board contains puzzle state and methods for manipulating tiles
 * Node contains a Board and path of actions leading to that state (i.e.
 a tree) along with path costs
 * Solver is an abstract base class for each type of solver (concrete class
 must implement solve method)
+* Puzzle takes user input, creates a board, and solves it.
 
 Command line execution (solver can be <code>ast</code> |
 <code>bfs</code> | <code>dfs</code> | <code>ida</code>):
